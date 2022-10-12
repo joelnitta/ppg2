@@ -91,3 +91,17 @@ make_new_data <- function(new_dat_raw, pteridocat) {
     dwctaxon::dct_validate(check_taxonomic_status = FALSE) %>%
     dplyr::arrange(scientificName)
 }
+
+push_pterido <- function(pteridocat) {
+  # Make a new branch, named after hash of pteriocat
+  br_name <- digest::digest(pteridocat)
+  gert::git_branch_create(br_name)
+  gert::git_branch_checkout(br_name)
+  # Write out updated pteridocat db
+  write.csv(pteridocat, here::here("data/pteridocat.csv"), row.names = FALSE)
+  # Push the branch
+  gert::git_add(files = "data/pteridocat.csv")
+  gert::git_commit("Update pteridocat")
+  gert::git_push("origin")
+  gert::git_branch_checkout("main")
+}

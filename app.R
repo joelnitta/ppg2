@@ -144,8 +144,12 @@ ui <- fluidPage(
       "Upload",
       sidebarLayout(
         sidebarPanel(
+          # Upload button
           fileInput("upload", "Upload data", multiple = FALSE, accept = ".csv"),
-          textOutput("data_new_summary")
+          # Summary of data upload
+          textOutput("data_new_summary"),
+          # Push changes button
+          actionButton("push_git", "Push to GitHub")
         ),
         mainPanel(
           dataTableOutput("preview_ul")
@@ -205,7 +209,8 @@ server <- function(input, output, session) {
       pageLength = 10
     )
   )
-  # - validation
+  # - validation and intergration of new data
+  # data_new() is the new pteridocat db
   data_new <- reactive({
     req(data_ul())
     new_dat_raw <- verify_ul(
@@ -223,6 +228,11 @@ server <- function(input, output, session) {
       nrow(data_new()))
   )
   output$data_new_summary <- renderText(string())
+  # - push changes to repo
+  observeEvent(input$push_git, {
+    req(data_new())
+    push_pterido(data_new())
+  })
 }
 
 shinyApp(ui, server)
