@@ -102,41 +102,61 @@ keep_cols <- c(
 )
 
 ui <- fluidPage(
-  sidebarLayout(
-    sidebarPanel(
-      selectInput("genus",
-        label = "Genus", choices = genera,
-        multiple = TRUE
-      ),
-      selectInput("subfamily",
-        label = "Subfamily", choices = subfamilies,
-        multiple = TRUE
-      ),
-      selectInput("family",
-        label = "Family", choices = families,
-        multiple = TRUE
-      ),
-      selectInput("suborder",
-        label = "Suborder", choices = suborders,
-        multiple = TRUE
-      ),
-      selectInput("order",
-        label = "Order", choices = orders,
-        multiple = TRUE
-      ),
-      selectInput("class",
-        label = "Class", choices = classes,
-        multiple = TRUE
-      ),
-      downloadButton("download", "Download .csv")
+  tabsetPanel(
+    # First main tab is to select and download data
+    tabPanel(
+      "Download",
+      sidebarLayout(
+        sidebarPanel(
+          selectInput("genus",
+            label = "Genus", choices = genera,
+            multiple = TRUE
+          ),
+          selectInput("subfamily",
+            label = "Subfamily", choices = subfamilies,
+            multiple = TRUE
+          ),
+          selectInput("family",
+            label = "Family", choices = families,
+            multiple = TRUE
+          ),
+          selectInput("suborder",
+            label = "Suborder", choices = suborders,
+            multiple = TRUE
+          ),
+          selectInput("order",
+            label = "Order", choices = orders,
+            multiple = TRUE
+          ),
+          selectInput("class",
+            label = "Class", choices = classes,
+            multiple = TRUE
+          ),
+          downloadButton("download", "Download .csv")
+        ),
+        mainPanel(
+          dataTableOutput("preview")
+        )
+      )
     ),
-    mainPanel(
-      dataTableOutput("preview")
+    # Second main tab is to upload and verify data
+    tabPanel(
+      "Upload",
+      sidebarLayout(
+        sidebarPanel(
+          fileInput("upload", "Upload data", multiple = FALSE, accept = ".csv"),
+          textOutput("data_new_summary")
+        ),
+        mainPanel(
+          dataTableOutput("preview_ul")
+        )
+      )
     )
   )
 )
 
 server <- function(input, output, session) {
+  # Server code for download tab
   data_dl <- reactive({
       pteridocat_tax %>%
       # Apply taxon filter
@@ -166,6 +186,43 @@ server <- function(input, output, session) {
       write.csv(dat, file = file, row.names = FALSE)
     }
   )
+  # Server code for upload tab
+  data_ul <- reactive({
+    req(input$upload)
+    ext <- tools::file_ext(input$upload$datapath)
+    switch(
+      ext,
+      csv = readr::read_csv(
+        input$upload$datapath,
+        col_types = readr::cols(.default = readr::col_character())
+      ),
+      validate("Invalid file; please upload a .csv file")
+    )
+  })
+  output$preview_ul <- renderDataTable(
+    data_ul(),
+    options = list(
+      pageLength = 10
+    )
+  )
+  # - validation
+  data_new <- reactive({
+    req(data_ul())
+    new_dat_raw <- verify_ul(
+      pteridocat = pteridocat,
+      data_ul = data_ul(),
+      valid_col_names = c(keep_cols, "new")
+    )
+    make_new_data(new_dat_raw, pteridocat)
+  })
+  string <- reactive(
+    paste0(
+      "Rows uploaded: ",
+      nrow(data_ul()),
+      " Rows total: ",
+      nrow(data_new()))
+  )
+  output$data_new_summary <- renderText(string())
 }
 
 shinyApp(ui, server)
