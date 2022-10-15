@@ -1,68 +1,26 @@
 library(shiny)
-library(taxastand)
-library(dwctaxon)
-library(tidyverse)
-library(assertr)
-library(rgnparser)
-library(taxastand)
+library(dwctaxon) # need for dct_validate
 
-source(here::here("R/functions.R"))
+# Setup ----
 
-# Load data ----
+# Load functions
+if (file.exists(here::here("app/functions.R"))) {
+  source(here::here("app/functions.R"))
+} else if (file.exists(here::here("functions.R"))) {
+  source(here::here("functions.R"))
+} else {
+  stop("Can't find functions.R")
+}
 
-pteridocat <- read_csv(
-  here::here("data/pteridocat.csv"),
-  col_types = cols(.default = col_character()))
-
-ppgi <- read_csv(
-  here::here("data/ppgi_taxonomy_mod.csv"),
-  col_types = cols(.default = col_character())) %>%
-  select(-notes)
-
-# Wrangle data ----
-
-# Many old synonyms in pteridocat have no entries for that genus (old genera)
-# instead, grab the higher level taxonomy **for the accepted name**
-# Output is df with taxonID and higher level taxonomy
-higher_tax_for_syns <-
-  pteridocat %>%
-  filter(!is.na(acceptedNameUsageID)) %>%
-  select(taxonID_orig = taxonID, acceptedNameUsageID) %>%
-  left_join(
-    pteridocat,
-    by = c(acceptedNameUsageID = "taxonID")) %>%
-  assert(not_na, genericName) %>%
-  select(taxonID = taxonID_orig, genericName) %>%
-  left_join(ppgi, by = c(genericName = "genus")) %>%
-  assert(is_uniq, taxonID) %>%
-  assert(not_na, class)
-
-# do the same for accepted names
-higher_tax_for_acc <-
-  pteridocat %>%
-  filter(is.na(acceptedNameUsageID)) %>%
-  select(taxonID, genericName) %>%
-  left_join(ppgi, by = c(genericName = "genus")) %>%
-  assert(is_uniq, taxonID) %>%
-  assert(not_na, class)
-
-# combine them
-higher_tax <- bind_rows(
-  higher_tax_for_syns,
-  higher_tax_for_acc
-) %>%
-  # 'genus' is PPGII genus (of accepted name),
-  # genericName is original genus
-  rename(genus = genericName) %>%
-  assert(is_uniq, taxonID) %>%
-  assert(not_na, class)
-
-# Join higher-level taxonomy to pteridocat
-pteridocat_tax <-
-  pteridocat %>%
-  assert(not_na, genericName) %>%
-  left_join(higher_tax, by = "taxonID") %>%
-  assert(is_uniq, taxonID)
+# Load pteridocat with higher-level taxonomy
+# (produced by data_prep.R)
+if (file.exists(here::here("app/pteridocat_tax.RDS"))) {
+  pteridocat_tax <- readRDS(here::here("app/pteridocat_tax.RDS"))
+} else if (file.exists(here::here("pteridocat_tax.RDS"))) {
+  pteridocat_tax <- readRDS(here::here("pteridocat_tax.RDS"))
+} else {
+  stop("Can't find pteridocat_tax.RDS")
+}
 
 # Set up taxonomy lists for filtering
 genera <- sort(unique(pteridocat_tax$genus))
@@ -86,9 +44,7 @@ suborder_select <- NA
 order_select <- NA
 class_select <- NA
 
-# Prepare data download ----
-
-# Minimize columns: user is only exposed to these,
+# Minimize columns for download: user is only exposed to these,
 # others can be inferred by backend
 keep_cols <- c(
   "taxonID",
@@ -100,6 +56,30 @@ keep_cols <- c(
   "namePublishedIn",
   "references"
 )
+
+# official columns in pteridocat
+keep_cols_detailed <- c(
+  "taxonID",
+  "parentNameUsageID",
+  "acceptedNameUsageID",
+  "taxonomicStatus",
+  "taxonRank",
+  "scientificName",
+  "genericName",
+  "infragenericEpithet",
+  "specificEpithet",
+  "infraspecificEpithet",
+  "namePublishedIn",
+  "nomenclaturalCode",
+  "nomenclaturalStatus",
+  "taxonRemarks",
+  "references",
+  "modified",
+  "nameAccordingTo"
+)
+
+# subset pteridocat + higher level taxonomy to just pteridocat
+pteridocat <- dplyr::select(pteridocat_tax, dplyr::all_of(keep_cols_detailed))
 
 ui <- fluidPage(
   tabsetPanel(
@@ -162,18 +142,18 @@ ui <- fluidPage(
 server <- function(input, output, session) {
   # Server code for download tab
   data_dl <- reactive({
-      pteridocat_tax %>%
+      pteridocat_tax |>
       # Apply taxon filter
-      filter(
+      dplyr::filter(
         genus %in_f_na% input$genus |
         family %in_f_na% input$family |
         subfamily %in_f_na% input$subfamily |
         suborder %in_f_na% input$suborder |
         order %in_f_na% input$order |
         class %in_f_na% input$class
-      ) %>%
+      ) |>
       # Keep only standard columns
-      select(all_of(keep_cols))
+      dplyr::select(dplyr::all_of(keep_cols))
   })
   output$preview <- renderDataTable(
     data_dl(),
@@ -186,7 +166,7 @@ server <- function(input, output, session) {
       return("ppg2_data.csv")
     },
     content = function(file) {
-      dat <- mutate(data_dl(), new = 0)
+      dat <- dplyr::mutate(data_dl(), new = 0)
       write.csv(dat, file = file, row.names = FALSE)
     }
   )
