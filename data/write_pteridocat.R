@@ -36,4 +36,4 @@ pteridocat::pteridocat %>%
   arrange(scientificName) %>%
   assert(not_na, genericName) %>%
   dct_validate(check_taxonomic_status = FALSE) %>%
-  write.csv("data/pteridocat.csv", row.names = FALSE)
+  write.csv(here::here("data/pteridocat.csv"), row.names = FALSE)
