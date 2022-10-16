@@ -40,7 +40,11 @@ RUN git clone https://github.com/camwebb/$APP_NAME.git && \
   make install
 
 # copy the app directory into the image
-COPY ./app/* /srv/shiny-server/
+COPY ./app/ /srv/shiny-server/
+
+# copy renv startup scripts to app
+COPY ./renv/ /srv/shiny-server/renv
+COPY .Rprofile /srv/shiny-server/
 
 # run app
 CMD ["/usr/bin/shiny-server"]
