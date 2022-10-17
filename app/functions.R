@@ -109,36 +109,37 @@ push_pterido <- function(pteridocat, user, email, changes_summary, pat) {
     url = "https://github.com/joelnitta/ppg2",
     path = ppg2_repo,
     branch = "main")
-  # # Make a new branch, named after hash of pteriocat
-  # br_name <- digest::digest(pteridocat)
-  # gert::git_branch_create(br_name, repo = ppg2_repo)
-  # gert::git_branch_checkout(br_name, repo = ppg2_repo)
-  # # Write out updated pteridocat db
-  # write.csv(
-  #   pteridocat,
-  #   fs::path(ppg2_repo, "data/pteridocat.csv"),
-  #   row.names = FALSE)
-  # # Commit change
-  # gert::git_add(
-  #   files = "data/pteridocat.csv",
-  #   repo = ppg2_repo)
-  # gert::git_commit(
-  #   "Update pteridocat",
-  #   repo = ppg2_repo,
-  #   author = gert::git_signature(user, email))
-  # # Push change
-  # gert::git_push(remote = "origin", repo = ppg2_repo)
-  # # Create PR
-  # gh_pr_create(
-  #   title = "Update to PPG2",
-  #   body = glue::glue(
-  #     "Submitted by: {user}
-  #     Summary of changes: {changes_summary}
-  #     "),
-  #   branch = br_name,
-  #   repo = ppg2_repo,
-  #   pat = pat
-  # )
+  # Make a new branch, named after hash of pteriocat
+  # git config --global --add safe.directory /tmp/Rtmp3Zrmyz/ppg2
+  br_name <- digest::digest(pteridocat)
+  gert::git_branch_create(br_name, repo = ppg2_repo)
+  gert::git_branch_checkout(br_name, repo = ppg2_repo)
+  # Write out updated pteridocat db
+  write.csv(
+    pteridocat,
+    fs::path(ppg2_repo, "data/pteridocat.csv"),
+    row.names = FALSE)
+  # Commit change
+  gert::git_add(
+    files = "data/pteridocat.csv",
+    repo = ppg2_repo)
+  gert::git_commit(
+    "Update pteridocat",
+    repo = ppg2_repo,
+    author = gert::git_signature(user, email))
+  # Push change
+  gert::git_push(remote = "origin", repo = ppg2_repo)
+  # Create PR
+  gh_pr_create(
+    title = "Update to PPG2",
+    body = glue::glue(
+      "Submitted by: {user}
+      Summary of changes: {changes_summary}
+      "),
+    branch = br_name,
+    repo = ppg2_repo,
+    pat = pat
+  )
 }
 
 # Create a pull request. Requires github CLI to be installed
