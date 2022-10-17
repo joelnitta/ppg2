@@ -74,7 +74,9 @@ make_new_data <- function(new_dat_raw, pteridocat) {
   sci_names <- new_dat_raw |>
     dplyr::pull(scientificName) |>
     unique() |>
-    taxastand::ts_parse_names(docker = TRUE) |>
+    taxastand::ts_parse_names(
+      docker = FALSE
+    ) |>
     dplyr::select(
       scientificName = name,
       genericName = genus_name,
@@ -94,16 +96,64 @@ make_new_data <- function(new_dat_raw, pteridocat) {
     dplyr::arrange(scientificName)
 }
 
-push_pterido <- function(pteridocat) {
-  # Make a new branch, named after hash of pteriocat
-  br_name <- digest::digest(pteridocat)
-  gert::git_branch_create(br_name)
-  gert::git_branch_checkout(br_name)
-  # Write out updated pteridocat db
-  write.csv(pteridocat, here::here("data/pteridocat.csv"), row.names = FALSE)
-  # Push the branch
-  gert::git_add(files = "data/pteridocat.csv")
-  gert::git_commit("Update pteridocat")
-  gert::git_push("origin")
-  gert::git_branch_checkout("main")
+push_pterido <- function(pteridocat, user, email, changes_summary, pat) {
+  # Set PAT
+  Sys.setenv(GITHUB_PAT = pat)
+  # set path to pp2 repo clone
+  ppg2_repo <- fs::path(tempdir(), "ppg2")
+  if (fs::dir_exists(ppg2_repo)) {
+    fs::dir_delete(ppg2_repo)
+  }
+  # Clone the ppg2 repo
+  gert::git_clone(
+    url = "https://github.com/joelnitta/ppg2",
+    path = ppg2_repo,
+    branch = "main")
+  # # Make a new branch, named after hash of pteriocat
+  # br_name <- digest::digest(pteridocat)
+  # gert::git_branch_create(br_name, repo = ppg2_repo)
+  # gert::git_branch_checkout(br_name, repo = ppg2_repo)
+  # # Write out updated pteridocat db
+  # write.csv(
+  #   pteridocat,
+  #   fs::path(ppg2_repo, "data/pteridocat.csv"),
+  #   row.names = FALSE)
+  # # Commit change
+  # gert::git_add(
+  #   files = "data/pteridocat.csv",
+  #   repo = ppg2_repo)
+  # gert::git_commit(
+  #   "Update pteridocat",
+  #   repo = ppg2_repo,
+  #   author = gert::git_signature(user, email))
+  # # Push change
+  # gert::git_push(remote = "origin", repo = ppg2_repo)
+  # # Create PR
+  # gh_pr_create(
+  #   title = "Update to PPG2",
+  #   body = glue::glue(
+  #     "Submitted by: {user}
+  #     Summary of changes: {changes_summary}
+  #     "),
+  #   branch = br_name,
+  #   repo = ppg2_repo,
+  #   pat = pat
+  # )
+}
+
+# Create a pull request. Requires github CLI to be installed
+gh_pr_create <- function(title, body, branch, base = "main", repo, pat) {
+  res <- processx::run(
+    command = "gh",
+    args = c(
+      "pr", "create",
+      "--title", title,
+      "--body", body,
+      "--head", branch,
+      "--base", base),
+    wd = repo,
+    env = c("current", GH_TOKEN = pat)
+  )
+  # Return URL of pull request
+  gsub("\n", "", res$stdout, fixed = TRUE)
 }

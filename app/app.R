@@ -126,6 +126,10 @@ ui <- fluidPage(
         sidebarPanel(
           # Upload button
           fileInput("upload", "Upload data", multiple = FALSE, accept = ".csv"),
+          textInput("user", "User name"),
+          textInput("email", "Email"),
+          passwordInput("pat", "GitHub PAT", value = Sys.getenv("GITHUB_PAT")),
+          textAreaInput("changes_summary", "Summary of changes", rows = 3),
           # Summary of data upload
           textOutput("data_new_summary"),
           # Push changes button
@@ -205,13 +209,23 @@ server <- function(input, output, session) {
       "Rows uploaded: ",
       nrow(data_ul()),
       " Rows total: ",
-      nrow(data_new()))
+      nrow(data_new()), " ", getwd())
   )
   output$data_new_summary <- renderText(string())
   # - push changes to repo
   observeEvent(input$push_git, {
     req(data_new())
-    push_pterido(data_new())
+    req(input$user)
+    req(input$email)
+    req(input$pat)
+    req(input$changes_summary)
+    push_pterido(
+      pteridocat = data_new(),
+      user = input$user,
+      email = input$email,
+      changes_summary = input$changes_summary,
+      pat = input$pat
+    )
   })
 }
 
