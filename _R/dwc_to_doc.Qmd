@@ -1,0 +1,73 @@
+---
+title: "Fern Taxonomy"
+format:
+  html:
+    toc: true
+execute: 
+  echo: false
+  message: false
+  warning: false
+---
+
+```{r}
+#| label: setup
+library(tidyverse)
+library(gluedown)
+```
+
+```{r}
+#| label: load-data
+wf_dwc <- read_csv(here::here("working/wf_dwc.csv")) %>%
+  mutate(order = 1:nrow(.) %>% as.numeric)
+```
+
+```{r}
+#| label: headers
+#| results: asis
+
+# Need to add spacers between each level above species
+spacers <-
+  wf_dwc %>%
+  filter(
+    taxonRank %in% c("order", "family", "subfamily", "tribe,", "genus")) %>%
+  transmute(taxonID, taxonRank = "spacer", order = order - 0.5)
+
+syns <-
+wf_dwc %>%
+  filter(taxonomicStatus == "synonym", taxonRank == "species") %>%
+  mutate(name_txt = glue::glue("= {scientificName} [{namePublishedIn}]")) %>%
+  group_by(acceptedNameUsageID) %>%
+  summarize(
+    name_txt = paste(name_txt, collapse = "\n\n")
+  ) %>%
+  left_join(
+    select(wf_dwc, taxonID, order),
+    by = c(acceptedNameUsageID = "taxonID")
+  ) %>%
+  mutate(
+    taxonomicStatus = "synonym",
+    order = order + 0.1)
+
+wf_dwc %>%
+  filter(taxonomicStatus == "accepted") %>%
+  bind_rows(spacers) %>%
+  bind_rows(syns) %>%
+  arrange(order) %>%
+  mutate(
+    text = case_when(
+      taxonRank == "order" ~ md_heading(scientificName, 2),
+      taxonRank == "family" ~ md_heading(scientificName, 3),
+      taxonRank == "subfamily" ~ md_heading(scientificName, 4),
+      taxonRank == "tribe" ~ md_heading(scientificName, 5),
+      taxonRank == "genus" ~ md_heading(scientificName, 6),
+      taxonRank == "species" ~ md_bullet(scientificName),
+      taxonRank %in% c("form", "variety", "subspecies") ~ 
+        md_bullet(scientificName),
+      taxonRank == "spacer" ~ glue::glue(""),
+      taxonomicStatus == "synonym" ~ md_text(name_txt)
+    )
+  ) %>%
+  filter(!is.na(text)) %>%
+  slice(1:50) %>%
+  pull(text)
+ ```
