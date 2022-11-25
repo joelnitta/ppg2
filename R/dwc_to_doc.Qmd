@@ -3,6 +3,8 @@ title: "Fern Taxonomy"
 format:
   html:
     toc: true
+  docx:
+    toc: true
 execute: 
   echo: false
   message: false
@@ -33,13 +35,13 @@ spacers <-
   transmute(taxonID, taxonRank = "spacer", order = order - 0.5)
 
 syns <-
-wf_dwc %>%
+  wf_dwc %>%
   filter(taxonomicStatus == "synonym", taxonRank == "species") %>%
-  mutate(name_txt = glue::glue("= {scientificName} [{namePublishedIn}]")) %>%
+  mutate(syn_txt = glue::glue("= {scientificName} [{namePublishedIn}]")) %>%
+  select(acceptedNameUsageID, syn_txt) %>%
   group_by(acceptedNameUsageID) %>%
-  summarize(
-    name_txt = paste(name_txt, collapse = "\n\n")
-  ) %>%
+  summarize(syn_txt = list(syn_txt))  %>%
+  mutate(syn_txt = map(syn_txt, md_hardline)) %>%
   left_join(
     select(wf_dwc, taxonID, order),
     by = c(acceptedNameUsageID = "taxonID")
@@ -48,26 +50,31 @@ wf_dwc %>%
     taxonomicStatus = "synonym",
     order = order + 0.1)
 
+print_dat <-
 wf_dwc %>%
-  filter(taxonomicStatus == "accepted") %>%
-  bind_rows(spacers) %>%
-  bind_rows(syns) %>%
-  arrange(order) %>%
-  mutate(
-    text = case_when(
-      taxonRank == "order" ~ md_heading(scientificName, 2),
-      taxonRank == "family" ~ md_heading(scientificName, 3),
-      taxonRank == "subfamily" ~ md_heading(scientificName, 4),
-      taxonRank == "tribe" ~ md_heading(scientificName, 5),
-      taxonRank == "genus" ~ md_heading(scientificName, 6),
-      taxonRank == "species" ~ md_bullet(scientificName),
-      taxonRank %in% c("form", "variety", "subspecies") ~ 
-        md_bullet(scientificName),
-      taxonRank == "spacer" ~ glue::glue(""),
-      taxonomicStatus == "synonym" ~ md_text(name_txt)
-    )
-  ) %>%
-  filter(!is.na(text)) %>%
-  slice(1:50) %>%
-  pull(text)
- ```
+    filter(taxonomicStatus == "accepted") %>%
+    bind_rows(spacers) %>%
+    bind_rows(syns) %>%
+    arrange(order) %>%
+    mutate(
+     text = case_when(
+       taxonRank == "order" ~ md_heading(scientificName, 2),
+       taxonRank == "family" ~ md_heading(scientificName, 3),
+       taxonRank == "subfamily" ~ md_heading(scientificName, 4),
+       taxonRank == "tribe" ~ md_heading(scientificName, 5),
+       taxonRank == "genus" ~ md_heading(scientificName, 6),
+       taxonRank == "species" ~ md_bullet(md_hardline(scientificName)),
+       taxonRank %in% c("form", "variety", "subspecies") ~ 
+         md_bullet(scientificName),
+       taxonRank == "spacer" ~ glue::glue("")
+     )
+   )
+
+for (i in seq_len(nrow(print_dat))) {
+  if (!is.null(print_dat$syn_txt[[i]])) {
+    print(print_dat$syn_txt[[i]])
+  } else {
+    print(print_dat$text[[i]])
+  }
+}
+```
