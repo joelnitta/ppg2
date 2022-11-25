@@ -186,12 +186,18 @@
     },
     "dplyr": {
       "Package": "dplyr",
-      "Version": "1.0.10",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Hash": "539412282059f7f0c07295723d23f987",
+      "Version": "1.0.99.9000",
+      "Source": "GitHub",
+      "RemoteType": "github",
+      "RemoteHost": "api.github.com",
+      "RemoteUsername": "tidyverse",
+      "RemoteRepo": "dplyr",
+      "RemoteRef": "main",
+      "RemoteSha": "4d0ac622c0e33c758b05a1582766fcd438cb79c1",
+      "Hash": "5aad25f5d228cea143abf9cb9e3cfaff",
       "Requirements": [
         "R6",
+        "cli",
         "generics",
         "glue",
         "lifecycle",
@@ -205,14 +211,16 @@
     },
     "dwctaxon": {
       "Package": "dwctaxon",
-      "Version": "1.0.0",
-      "Source": "Repository",
-      "Repository": "https://joelnitta.r-universe.dev",
+      "Version": "1.0.0.9000",
+      "Source": "GitHub",
+      "RemoteType": "github",
+      "RemoteHost": "api.github.com",
+      "RemoteUsername": "joelnitta",
+      "RemoteRepo": "dwctaxon",
+      "RemoteRef": "main",
+      "RemoteSha": "dff74b69f453141aa95a09bce2f5c6d008c982d3",
       "Remotes": "anthonynorth/roxyglobals",
-      "RemoteUrl": "https://github.com/joelnitta/dwctaxon",
-      "RemoteRef": "HEAD",
-      "RemoteSha": "011d50ad8b8cae13056dac8976ccfb19054a2a00",
-      "Hash": "7cb14be76e8ec86552b7a000bcef12f3",
+      "Hash": "f2e2cc4919e421bc48628897ea802eb1",
       "Requirements": [
         "assertr",
         "assertthat",
@@ -220,6 +228,7 @@
         "dplyr",
         "glue",
         "purrr",
+        "settings",
         "stringr",
         "tibble",
         "tidyr"
@@ -382,11 +391,12 @@
     },
     "lifecycle": {
       "Package": "lifecycle",
-      "Version": "1.0.2",
+      "Version": "1.0.3",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "25f74670fa7d3277fe3ad8c1712a699f",
+      "Hash": "001cecbeac1cff9301bdc3775ee46a86",
       "Requirements": [
+        "cli",
         "glue",
         "rlang"
       ]
@@ -593,6 +603,14 @@
         "rlang"
       ]
     },
+    "settings": {
+      "Package": "settings",
+      "Version": "0.2.7",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "044078dfd387c9a6e160103978d23be4",
+      "Requirements": []
+    },
     "shiny": {
       "Package": "shiny",
       "Version": "1.7.1",
@@ -721,16 +739,17 @@
     },
     "tidyselect": {
       "Package": "tidyselect",
-      "Version": "1.1.2",
+      "Version": "1.2.0",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "17f6da8cfd7002760a859915ce7eef8f",
+      "Hash": "79540e5fcd9e0435af547d885f184fd5",
       "Requirements": [
-        "ellipsis",
+        "cli",
         "glue",
-        "purrr",
+        "lifecycle",
         "rlang",
-        "vctrs"
+        "vctrs",
+        "withr"
       ]
     },
     "tzdb": {
@@ -753,13 +772,14 @@
     },
     "vctrs": {
       "Package": "vctrs",
-      "Version": "0.4.1",
+      "Version": "0.5.1",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "8b54f22e2a58c4f275479c92ce041a57",
+      "Hash": "970324f6572b4fd81db507b5d4062cb0",
       "Requirements": [
         "cli",
         "glue",
+        "lifecycle",
         "rlang"
       ]
     },
