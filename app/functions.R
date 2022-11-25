@@ -92,7 +92,10 @@ make_new_data <- function(new_dat_raw, pteridocat) {
   # Add new data ----
   dplyr::anti_join(pteridocat, new_dat, by = "taxonID") |>
     dplyr::bind_rows(new_dat) |>
-    dwctaxon::dct_validate(check_taxonomic_status = FALSE) |>
+    dwctaxon::dct_validate(
+      check_sci_name = FALSE,
+      check_status_diff = FALSE,
+      on_fail = "summary") |>
     dplyr::arrange(scientificName)
 }
 

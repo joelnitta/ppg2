@@ -79,7 +79,14 @@ keep_cols_detailed <- c(
 )
 
 # subset pteridocat + higher level taxonomy to just pteridocat
-pteridocat <- dplyr::select(pteridocat_tax, dplyr::all_of(keep_cols_detailed))
+pteridocat <- dplyr::select(
+  pteridocat_tax, dplyr::all_of(keep_cols_detailed)) |>
+  # TODO FIXME: drop one bad taxon
+  dplyr::filter(taxonID != "d612713e87cd9ea77b08f5da69556e7a")
+
+# set valid tax status for dct_validate
+Sys.setenv(VALID_TAX_STATUS =
+  "accepted, ambiguous synonym, nom. nud., provisionally accepted, synonym, variant") # nolint
 
 ui <- fluidPage(
   tabsetPanel(
@@ -138,6 +145,12 @@ ui <- fluidPage(
         mainPanel(
           dataTableOutput("preview_ul")
         )
+      )
+    ),
+    tabPanel(
+      "Verify",
+      mainPanel(
+        dataTableOutput("data_new")
       )
     )
   )
@@ -212,6 +225,7 @@ server <- function(input, output, session) {
       nrow(data_new()), " ", getwd())
   )
   output$data_new_summary <- renderText(string())
+  output$data_new <- renderDataTable(data_new())
   # - push changes to repo
   observeEvent(input$push_git, {
     req(data_new())
