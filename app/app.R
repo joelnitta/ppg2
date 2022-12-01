@@ -14,35 +14,24 @@ if (file.exists(here::here("app/functions.R"))) {
 
 # Load pteridocat with higher-level taxonomy
 # (produced by data_prep.R)
-if (file.exists(here::here("app/pteridocat_tax.RDS"))) {
-  pteridocat_tax <- readRDS(here::here("app/pteridocat_tax.RDS"))
-} else if (file.exists(here::here("pteridocat_tax.RDS"))) {
-  pteridocat_tax <- readRDS(here::here("pteridocat_tax.RDS"))
+if (file.exists(here::here("app/wf_dwc.csv"))) {
+  wf_dwc <- readr::read_csv(here::here("app/wf_dwc.csv"))
+} else if (file.exists(here::here("wf_dwc.csv"))) {
+  wf_dwc <- readr::read_csv(here::here("wf_dwc.csv"))
 } else {
-  stop("Can't find pteridocat_tax.RDS")
+  stop("Can't find wf_dwc.csv")
 }
 
 # Set up taxonomy lists for filtering
-genera <- sort(unique(pteridocat_tax$genus))
-subfamilies <- sort(unique(pteridocat_tax$subfamily))
-families <- sort(unique(pteridocat_tax$family))
-suborders <- sort(unique(pteridocat_tax$suborder))
-orders <- sort(unique(pteridocat_tax$order))
-classes <- sort(unique(pteridocat_tax$class))
-
-genus_select <- genera
-subfamily_select <- subfamilies
-family_select <- families
-suborder_select <- suborders
-order_select <- orders
-class_select <- classes
+genera <- sort(unique(wf_dwc$genus))
+subfamilies <- sort(unique(wf_dwc$subfamily))
+families <- sort(unique(wf_dwc$family))
+orders <- sort(unique(wf_dwc$order))
 
 genus_select <- NA
 subfamily_select <- NA
 family_select <- NA
-suborder_select <- NA
 order_select <- NA
-class_select <- NA
 
 # Minimize columns for download: user is only exposed to these,
 # others can be inferred by backend
@@ -80,7 +69,7 @@ keep_cols_detailed <- c(
 
 # subset pteridocat + higher level taxonomy to just pteridocat
 pteridocat <- dplyr::select(
-  pteridocat_tax, dplyr::all_of(keep_cols_detailed)) |>
+  wf_dwc, dplyr::all_of(keep_cols_detailed)) |>
   # TODO FIXME: drop one bad taxon
   dplyr::filter(taxonID != "d612713e87cd9ea77b08f5da69556e7a")
 
@@ -107,8 +96,8 @@ ui <- fluidPage(
             label = "Family", choices = families,
             multiple = TRUE
           ),
-          selectInput("suborder",
-            label = "Suborder", choices = suborders,
+          selectInput("subfamily",
+            label = "subfamily", choices = subfamilies,
             multiple = TRUE
           ),
           selectInput("order",
@@ -159,13 +148,13 @@ ui <- fluidPage(
 server <- function(input, output, session) {
   # Server code for download tab
   data_dl <- reactive({
-      pteridocat_tax |>
+      wf_dwc |>
       # Apply taxon filter
       dplyr::filter(
         genus %in_f_na% input$genus |
         family %in_f_na% input$family |
         subfamily %in_f_na% input$subfamily |
-        suborder %in_f_na% input$suborder |
+        subfamily %in_f_na% input$subfamily |
         order %in_f_na% input$order |
         class %in_f_na% input$class
       ) |>
