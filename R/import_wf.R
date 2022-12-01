@@ -59,7 +59,9 @@ wf_raw <- read_delim("data_raw/001.csv", delim = "|") %>%
   filter(
     !name %in% c(
       "Tectaria fungii S.Y.Dong",
-      "Davallia seramensis (M. Kato) comb. ined.")
+      "Davallia seramensis (M. Kato) comb. ined.",
+      # misformatted name, need to follow-up with MH
+      "^z\t\t\t\t= Marsilea hickenii Herter")
   )
 
 # Initial cleaning ----
@@ -473,30 +475,52 @@ wf_dwc_acc_only_no_higher_tax %>%
     genus_id = coalesce(genus_id_1, genus_id_2, genus_id_3)
   ) %>%
   assert(is_uniq_2, genus) %>%
-  select(
-    -genus_1, -genus_2, -genus_3,
-    -genus_id_1, -genus_id_2, -genus_id_3
-  ) %>%
-  left_join(
-    filter(wf_dwc_acc_only_no_higher_tax, taxonRank == "species") %>%
-    select(
-      taxonID,
-      genus_id = parentNameUsageID
-    ),
-    by = "genus_id",
-    multiple = "all") %>%
-  assert(is_uniq_2, taxonID) %>%
-  select(taxonID, genus, tribe, subfamily, family, order) %>%
-  mutate(across(genus:order, ~str_split(.x, " ") %>% purrr::map_chr(1))) %>%
-  unique()
+  select(genus, tribe, subfamily, family, order) %>%
+  mutate(across(everything(), ~str_split(.x, " ") %>% purrr::map_chr(1))) %>%
+  unique() %>%
+  assert(not_na, genus) %>%
+  assert(is_uniq, genus)
 
 # Add higher taxa
+wf_dwc_acc_only_inc_higher_tax <- bind_rows(
+  filter(wf_dwc_acc_only_no_higher_tax, taxonRank == "order"),
+  filter(wf_dwc_acc_only_no_higher_tax, taxonRank == "family") %>%
+    mutate(family = genus_from_sp(scientificName)) %>%
+    left_join(unique(select(higher_taxa, family, order)), by = "family"),
+  filter(wf_dwc_acc_only_no_higher_tax, taxonRank == "subfamily") %>%
+    mutate(subfamily = genus_from_sp(scientificName)) %>%
+    left_join(
+      unique(select(higher_taxa, subfamily, family, order)), by = "subfamily"),
+  filter(wf_dwc_acc_only_no_higher_tax, taxonRank == "tribe") %>%
+    mutate(tribe = genus_from_sp(scientificName)) %>%
+    left_join(
+      unique(select(higher_taxa, tribe, family, order)), by = "tribe"),
+  filter(wf_dwc_acc_only_no_higher_tax, taxonRank == "genus") %>%
+    mutate(genus = genus_from_sp(scientificName)) %>%
+    left_join(
+      unique(select(higher_taxa, genus, family, order)), by = "genus"),
+  filter(
+    wf_dwc_acc_only_no_higher_tax,
+    taxonRank %in% c("species", "subspecies", "form", "variety")) %>%
+    mutate(genus = genus_from_sp(scientificName)) %>%
+    left_join(
+      unique(select(higher_taxa, genus, family, order)), by = "genus")
+) %>%
+  verify(all(taxonID %in% wf_dwc_acc_only_no_higher_tax$taxonID)) %>%
+  left_join(
+    select(wf_dwc_acc_only_no_higher_tax, taxonID),
+    .,
+    by = "taxonID"
+  ) %>%
+  dct_validate(check_col_names = FALSE) %>%
+  select(taxonID, genus, tribe, subfamily, family, order)
+
 wf_dwc <-
 wf_dwc_no_higher_tax %>%
-  left_join(higher_taxa, by = "taxonID") %>%
+  left_join(wf_dwc_acc_only_inc_higher_tax, by = "taxonID") %>%
   left_join(
-    higher_taxa,
-    by = c(acceptedNameUsageID = "taxonID"), na_matches = "never") %>%
+    wf_dwc_acc_only_inc_higher_tax,
+    by = c(acceptedNameUsageID = "taxonID")) %>%
   mutate(
     genus = coalesce(genus.x, genus.y),
     tribe = coalesce(tribe.x, tribe.y),
@@ -504,7 +528,9 @@ wf_dwc_no_higher_tax %>%
     family = coalesce(family.x, family.y),
     order = coalesce(order.x, order.y)
   ) %>%
-  select(-matches("\\.x|\\.y"))
+  select(-matches("\\.x|\\.y")) %>%
+  dct_validate(check_col_names = FALSE)
 
 # Save final data in DWC format ----
 write_csv(wf_dwc, "data/wf_dwc.csv")
+write_csv(wf_dwc, "app/wf_dwc.csv")
